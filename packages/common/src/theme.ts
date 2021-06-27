@@ -22,7 +22,7 @@ const monochrome: MonochromeColors = {
   darkest: '#333333',
 };
 
-export const theme = {
+const theme = {
   spacing: 8,
   shape: {
     borderRadius: 4,
@@ -82,3 +82,5 @@ export const theme = {
     monochrome,
   },
 };
+
+export default theme;

@@ -37,9 +37,23 @@ module.exports = {
       ],
     };
   },
+  managerWebpack: async config => {
+    return {
+      ...enableTypescriptImportsFromExternalPaths([path.resolve(__dirname, '../../common/src')])(
+        removeModuleScopePlugin()(config),
+      ),
+      resolve: {
+        ...config.resolve,
+        alias: {
+          ...config.resolve.alias,
+          '@orderbook/common': path.resolve(__dirname, '../../common/src'),
+        },
+      },
+    };
+  },
   webpackFinal: async config => {
     return {
-      ...enableTypescriptImportsFromExternalPaths([path.resolve(__dirname, '../../common/src/')])(
+      ...enableTypescriptImportsFromExternalPaths([path.resolve(__dirname, '../../common/src')])(
         removeModuleScopePlugin()(config),
       ),
       resolve: {
@@ -50,7 +64,7 @@ module.exports = {
           '@emotion/core': toPath('node_modules/@emotion/react'),
           'emotion-theming': toPath('node_modules/@emotion/react'),
           '@emotion/styled': toPath('node_modules/@emotion/styled'),
-          '@orderbook/common': path.resolve(__dirname, '../../common/src/'),
+          '@orderbook/common': path.resolve(__dirname, '../../common/src'),
         },
       },
     };

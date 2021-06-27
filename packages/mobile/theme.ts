@@ -1,4 +1,4 @@
-import {theme as commonTheme} from '@orderbook/common/theme';
+import commonTheme from '@orderbook/common/theme';
 
 const theme = {
   ...commonTheme,
