@@ -1,5 +1,6 @@
 export const FEED_URL = 'wss://www.cryptofacilities.com/ws/v1';
 export const MARKET_DEPTH = 100;
+export const DEFAULT_FEED_BUFFER_TIME = 500;
 
 export const PRODUCT = {
   bitcoin: 'PI_XBTUSD',

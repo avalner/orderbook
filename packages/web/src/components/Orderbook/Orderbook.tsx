@@ -1,27 +1,22 @@
 import styled from '@emotion/styled';
 import Select, { NumericValueOption } from '../../shared/components/Select/Select';
 import * as React from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { Button } from '../../shared/components/Button/Button';
 import { Icon } from '../../shared/components/Icon/Icon';
 import { useTheme } from '@emotion/react';
 import OrderTableContainer from './OrderTableContainer';
-import {
-  DEFAULT_PRODUCT,
-  FEED_URL,
-  MARKET_DEPTH,
-  PRODUCT_GROUPS,
-  PRODUCT,
-  UPDATE_INTERVALS,
-  PRODUCT_NAMES,
-} from '@orderbook/common/constants';
+import { DEFAULT_PRODUCT, PRODUCT, PRODUCT_GROUPS, PRODUCT_NAMES, UPDATE_INTERVALS } from '@orderbook/common/constants';
+import { SocketEventsServiceContext } from '@orderbook/common/providers/SocketEventsServiceProvider';
 
 const updateIntervalOptions: NumericValueOption[] = UPDATE_INTERVALS.map(value => ({ value, label: value.toString() }));
 
 const Orderbook = () => {
   const theme = useTheme();
+  const socketService = useContext(SocketEventsServiceContext);
   const [selectedProduct, setSelectedProduct] = useState(DEFAULT_PRODUCT);
   const [updateInterval, setUpdateInternal] = useState(updateIntervalOptions[2]);
+  const [killFeed, setKillFeed] = useState(true);
 
   const groupOptions: NumericValueOption[] = useMemo(() => {
     return PRODUCT_GROUPS[selectedProduct].map(value => ({
@@ -44,6 +39,11 @@ const Orderbook = () => {
     }
   };
 
+  const killFeedHandler = () => {
+    killFeed ? socketService.simulateError() : socketService.open();
+    setKillFeed(!killFeed);
+  };
+
   return (
     <Container>
       <Header>
@@ -61,21 +61,19 @@ const Orderbook = () => {
       </Header>
       <Content>
         <OrderTableContainer
-          feedUrl={FEED_URL}
           group={group.value}
-          marketDepth={MARKET_DEPTH}
           selectedProduct={selectedProduct}
           updateInterval={updateInterval.value}
         />
       </Content>
       <Footer>
-        <ButtonStyled color={theme.palette.color.purple} onClick={switchSelectedProduct}>
+        <ButtonStyled color={theme.palette.color.purple} disabled={!killFeed} onClick={switchSelectedProduct}>
           <Icon icon="transfer" />
           Toggle Feed
         </ButtonStyled>
-        <ButtonStyled color={theme.palette.color.red}>
+        <ButtonStyled color={killFeed ? theme.palette.color.red : theme.palette.color.green} onClick={killFeedHandler}>
           <Icon icon="warning" />
-          Kill Feed
+          {killFeed ? 'Kill Feed' : 'Revive Feed'}
         </ButtonStyled>
       </Footer>
     </Container>
@@ -93,7 +91,7 @@ const Container = styled.div`
 
 const ControlsContainer = styled.div`
   display: flex;
-  & > *:not(:first-child) {
+  & > * {
     margin-left: 10px;
   }
 `;

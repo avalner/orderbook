@@ -1,7 +1,6 @@
-import { bufferWhen, filter } from 'rxjs/operators';
+import { bufferWhen, catchError, delay, filter, retryWhen } from 'rxjs/operators';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
-import { BehaviorSubject, Observable, Subject, timer } from 'rxjs';
-import { useEffect, useState } from 'react';
+import { BehaviorSubject, merge, Observable, Subject, throwError, timer } from 'rxjs';
 
 export type RequestMessage = {
   event: 'subscribe' | 'unsubscribe';
@@ -104,25 +103,37 @@ export class SocketEventsService {
   private _opening: boolean;
   private _opened: boolean;
   private _closing: boolean;
-  private _nonBufferedMessages$: Observable<Message>;
-  private _bufferedMessages$: Observable<MarketUpdateMessage[]>;
+  private _messages$: Observable<Message | MarketUpdateMessage[]>;
   private _marketDataUpdated$ = new BehaviorSubject<MarketSate>({
     bids: [],
     asks: [],
   });
+  private _errors$ = new Subject();
   private _bids = new Map<number, number>();
   private _asks = new Map<number, number>();
-
-  get subscribedProduct() {
-    return this._subscribedProduct;
-  }
 
   get opened() {
     return this._opened;
   }
 
+  get opening() {
+    return this._opening;
+  }
+
+  get subscribedProduct() {
+    return this._subscribedProduct;
+  }
+
   get marketDataUpdated$() {
     return this._marketDataUpdated$;
+  }
+
+  get open$() {
+    return this._openObserver;
+  }
+
+  get errors$() {
+    return this._errors$;
   }
 
   constructor(public readonly url: string, private marketDepth: number, public marketUpdateBufferTime: number) {
@@ -133,41 +144,58 @@ export class SocketEventsService {
       closingObserver: this._closingObserver,
     });
 
-    this._openObserver.subscribe(() => (this._opened = true));
+    this._openObserver.subscribe(() => {
+      this._opening = false;
+      this._opened = true;
+
+      if (this._subscribedProduct) {
+        this.subscribeToProduct();
+      }
+    });
+
     this._closeObserver.subscribe(() => {
       this._opened = false;
       this._closing = false;
     });
+
     this._closingObserver.subscribe(() => (this._closing = true));
 
-    this._nonBufferedMessages$ = this._webSocket.pipe(filter(message => isNonMarketUpdateMessage(message)));
-    this._bufferedMessages$ = this._webSocket.pipe(filter(message => isMarketUpdateMessage(message))).pipe(
+    const nonBufferedMessages$ = this._webSocket.pipe(filter(message => isNonMarketUpdateMessage(message)));
+    const bufferedMessages$ = this._webSocket.pipe(filter(message => isMarketUpdateMessage(message))).pipe(
       bufferWhen(() => timer(this.marketUpdateBufferTime)),
       filter(messages => !!messages.length),
     ) as Observable<MarketUpdateMessage[]>;
+
+    this._messages$ = merge(nonBufferedMessages$, bufferedMessages$).pipe(
+      catchError(error => {
+        this._errors$.next(error);
+        return throwError(error);
+      }),
+      retryWhen(errors => errors.pipe(delay(1000))),
+    );
   }
 
   open() {
     if (this._opening || this._opened) {
-      throw new Error('Socket is already opening/opened.');
+      return;
     }
 
     this._opening = true;
 
-    this._nonBufferedMessages$.subscribe(message => {
-      if (isMarketSnapshotMessage(message)) {
-        this.processSnapshotMessage(message);
-      } else if (isSubscriptionResultMessage(message)) {
-        this.processSubscriptionMessage(message);
-      } else if (isInfoMessage(message)) {
-        this.processInfoMessage(message);
-      } else if (isAlertMessage(message)) {
-        this.processAlertMessage(message);
+    this._messages$.subscribe(message => {
+      if (Array.isArray(message)) {
+        this.processMarketUpdateMessage(message);
+      } else {
+        if (isMarketSnapshotMessage(message)) {
+          this.processSnapshotMessage(message);
+        } else if (isSubscriptionResultMessage(message)) {
+          this.processSubscriptionMessage(message);
+        } else if (isInfoMessage(message)) {
+          this.processInfoMessage(message);
+        } else if (isAlertMessage(message)) {
+          this.processAlertMessage(message);
+        }
       }
-    });
-
-    this._bufferedMessages$.subscribe(messages => {
-      this.processMarketUpdateMessage(messages);
     });
   }
 
@@ -181,22 +209,30 @@ export class SocketEventsService {
     this._webSocket.complete();
   }
 
-  subscribeToProduct(product: string) {
-    if (this._subscribedProduct == product) {
+  subscribeToProduct(product?: string) {
+    if (this._subscribedProduct === product && (this._opening || this._opened)) {
       throw Error('There is already an active subscription to the product ' + product);
     }
 
-    if (this._subscribedProduct) {
+    if (this._subscribedProduct && product) {
       this.unsubscribe();
     }
 
+    if (!this._opening && !this.opened) {
+      this.open();
+    }
+
     this._subscribing = true;
-    this._webSocket.next({ event: 'subscribe', feed: 'book_ui_1', product_ids: [product] } as RequestMessage);
+    this._webSocket.next({
+      event: 'subscribe',
+      feed: 'book_ui_1',
+      product_ids: [product || this._subscribedProduct],
+    } as RequestMessage);
   }
 
   unsubscribe() {
     if (!this._subscribedProduct) {
-      throw new Error('There is no subscribed product');
+      return;
     }
 
     this._unsubscribing = true;
@@ -208,8 +244,9 @@ export class SocketEventsService {
     } as RequestMessage);
   }
 
-  sendBadRequest() {
-    this._webSocket.next({ event: 'bad event' as unknown, feed: 'book_ui_1', product_ids: [] } as RequestMessage);
+  simulateError() {
+    this._errors$.next({ type: 'kill', message: 'I think our app just broke!' });
+    this._webSocket.complete();
   }
 
   private processMarketUpdateMessage(messages: MarketUpdateMessage[]) {
@@ -261,30 +298,7 @@ export class SocketEventsService {
     console.log('Info message:', message);
   }
 
-  private processAlertMessage(message: AlertMessage) {}
+  private processAlertMessage(message: AlertMessage) {
+    console.log('Alert message:', message);
+  }
 }
-
-export const useSocketEventsService = (url: string, marketDepth = 25, marketUpdateBufferTime = 100) => {
-  const [service, setService] = useState<SocketEventsService>();
-  const [marketData, setMarketData] = useState<MarketSate>({ bids: [], asks: [] });
-
-  useEffect(() => {
-    const srv = new SocketEventsService(url, marketDepth, marketUpdateBufferTime);
-    console.log('SocketEventsService created');
-    const marketUpdatesSubscription = srv.marketDataUpdated$.subscribe(value => setMarketData(value));
-    srv.open();
-    setService(srv);
-    return () => {
-      marketUpdatesSubscription.unsubscribe();
-      srv?.close();
-    };
-  }, [marketDepth, url]);
-
-  useEffect(() => {
-    if (service) {
-      service.marketUpdateBufferTime = marketUpdateBufferTime;
-    }
-  }, [marketUpdateBufferTime, service]);
-
-  return { marketData, service };
-};

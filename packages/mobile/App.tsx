@@ -4,6 +4,7 @@ import theme from './theme';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import Orderbook from './components/Orderbook';
 import {ThemeProvider} from 'react-native-elements';
+import {SocketEventsServiceProvider} from '@orderbook/common/providers/SocketEventsServiceProvider';
 
 const App = () => {
   const backgroundStyle = {
@@ -18,7 +19,9 @@ const App = () => {
           backgroundColor={theme.palette.panelBackgroundColor}
         />
         <ThemeProvider theme={theme}>
-          <Orderbook />
+          <SocketEventsServiceProvider>
+            <Orderbook />
+          </SocketEventsServiceProvider>
         </ThemeProvider>
       </SafeAreaView>
     </SafeAreaProvider>

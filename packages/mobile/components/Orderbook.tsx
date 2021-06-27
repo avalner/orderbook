@@ -1,5 +1,4 @@
-import React from 'react';
-import {useEffect, useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import theme from '../theme';
 import {Picker} from '@react-native-community/picker';
@@ -7,8 +6,8 @@ import {Button, Text} from 'react-native-elements';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import OrderbookTableContainer from './OrderbookTableContainer';
 import {
+  DEFAULT_FEED_BUFFER_TIME,
   DEFAULT_PRODUCT,
-  FEED_URL,
   PRODUCT,
   PRODUCT_GROUPS,
 } from '@orderbook/common/constants';
@@ -58,11 +57,9 @@ const Orderbook = () => {
       </View>
       <View style={styles.content}>
         <OrderbookTableContainer
-          feedUrl={FEED_URL}
           selectedProduct={selectedProduct}
           group={group}
-          updateInterval={1000}
-          marketDepth={30}
+          updateInterval={DEFAULT_FEED_BUFFER_TIME}
         />
       </View>
       <View style={styles.footer}>
@@ -89,7 +86,7 @@ const Orderbook = () => {
               color="white"
             />
           }
-          title="Toggle Feed"
+          title="Kill Feed"
           buttonStyle={styles.killFeedButton}
           titleStyle={styles.buttonTitle}
         />
