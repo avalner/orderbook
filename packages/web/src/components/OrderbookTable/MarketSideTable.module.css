@@ -1,0 +1,76 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 350px;
+}
+
+.row {
+  position: relative;
+  display: flex;
+  height: 32px;
+  min-height: 30px;
+}
+
+.rowBid {
+  flex-direction: row;
+}
+
+.rowAsk {
+  flex-direction: row-reverse;
+}
+
+.cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cellPrice, .cellSize {
+  width: 30%;
+}
+
+.cellTotal {
+  width: 40%;
+}
+
+.cellInner {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 40%;
+}
+
+.headerCellInner {
+  font-size: 16px;
+  color: #565d6b;
+  text-transform: uppercase;
+}
+
+.totalBar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+.bidBgColor {
+  background-color: #3E212C;
+}
+
+.askBgColor {
+  background-color: #103839;
+}
+
+.dataCellInner {
+  font-size: 14px;
+  color: #fff;
+}
+
+.dataCellInnerTotal {
+  color: #10B585;
+}
+
+
+
+

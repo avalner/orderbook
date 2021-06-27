@@ -1,0 +1,45 @@
+{
+  "name": "orderbook",
+  "private": true,
+  "scripts": {
+    "start:web": "yarn workspace @orderbook/web start",
+    "start:electron": "yarn workspace @orderbook/web electron",
+    "start:electron-dev": "yarn workspace @orderbook/web electron-dev",
+    "start:android": "yarn workspace @orderbook/mobile android",
+    "build:web": "yarn workspace @orderbook/web build",
+    "build:electron": "yarn workspace @orderbook/web electron-pack",
+    "storybook": "yarn workspace @orderbook/web storybook"
+  },
+  "workspaces": {
+    "packages": [
+      "packages/*"
+    ],
+    "nohoist": [
+      "**/react-native",
+      "**/react-native/**",
+      "**/@emotion",
+      "**/@emotion/**",
+      "**/react",
+      "**/react/**",
+      "**/react-dom",
+      "**/react-dom/**",
+      "**/react-scripts",
+      "**/react-scripts/**",
+      "**/electron",
+      "**/electron/**",
+      "**/electron-serve",
+      "**/electron-serve/**",
+      "**/react-native-vector-icons",
+      "**/react-native-vector-icons/**",
+      "**/react-native-elements",
+      "**/react-native-elements/**",
+      "**/react-native-safe-area-context",
+      "**/react-native-safe-area-context/**",
+      "**/@babel",
+      "**/@babel/**"
+    ]
+  },
+  "devDependencies": {
+    "lerna": "^4.0.0"
+  }
+}
