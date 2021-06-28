@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useContext, useEffect, useMemo, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import theme from '../theme';
 import {Picker} from '@react-native-community/picker';
@@ -11,9 +11,12 @@ import {
   PRODUCT,
   PRODUCT_GROUPS,
 } from '@orderbook/common/constants';
+import {SocketEventsServiceContext} from '@orderbook/common/providers/SocketEventsServiceProvider';
 
 const Orderbook = () => {
+  const socketService = useContext(SocketEventsServiceContext);
   const [selectedProduct, setSelectedProduct] = useState(DEFAULT_PRODUCT);
+  const [killFeed, setKillFeed] = useState(true);
 
   const groupOptions = useMemo(() => {
     return PRODUCT_GROUPS[selectedProduct].map(value => (
@@ -37,6 +40,11 @@ const Orderbook = () => {
     } else {
       setSelectedProduct(PRODUCT.bitcoin);
     }
+  };
+
+  const killFeedHandler = () => {
+    killFeed ? socketService.simulateError() : socketService.open();
+    setKillFeed(!killFeed);
   };
 
   return (
@@ -75,6 +83,7 @@ const Orderbook = () => {
           title="Toggle Feed"
           buttonStyle={styles.toggleFeedButton}
           titleStyle={styles.buttonTitle}
+          disabled={!killFeed}
           onPress={switchSelectedProduct}
         />
         <Button
@@ -86,9 +95,15 @@ const Orderbook = () => {
               color="white"
             />
           }
-          title="Kill Feed"
-          buttonStyle={styles.killFeedButton}
+          title={killFeed ? 'Kill Feed' : 'Revive Feed'}
+          buttonStyle={{
+            ...styles.killFeedButton,
+            backgroundColor: killFeed
+              ? theme.palette.color.red
+              : theme.palette.color.green,
+          }}
           titleStyle={styles.buttonTitle}
+          onPress={killFeedHandler}
         />
       </View>
     </View>
@@ -139,7 +154,6 @@ const styles = StyleSheet.create({
   },
   killFeedButton: {
     marginLeft: 10,
-    backgroundColor: theme.palette.color.red,
     paddingHorizontal: 15,
   },
   buttonTitle: {

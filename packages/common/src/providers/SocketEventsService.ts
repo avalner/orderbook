@@ -1,6 +1,7 @@
-import { bufferWhen, catchError, delay, filter, retryWhen } from 'rxjs/operators';
+import { bufferWhen, catchError, delay, filter, retryWhen, take, tap } from 'rxjs/operators';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
-import { BehaviorSubject, merge, Observable, Subject, throwError, timer } from 'rxjs';
+import { BehaviorSubject, EMPTY, merge, Observable, Subject, throwError, timer } from 'rxjs';
+import { RECONNECTION_TIMEOUT } from '../constants';
 
 export type RequestMessage = {
   event: 'subscribe' | 'unsubscribe';
@@ -98,13 +99,14 @@ export class SocketEventsService {
   private _openObserver = new Subject();
   private _closeObserver = new Subject();
   private _closingObserver = new Subject();
-  private _subscribing: boolean;
-  private _unsubscribing: boolean;
-  private _opening: boolean;
-  private _opened: boolean;
-  private _closing: boolean;
+  private _open$ = new BehaviorSubject(false);
+  private _opening$ = new BehaviorSubject(false);
+  private _closing$ = new BehaviorSubject(false);
+  private _subscribedToProduct$ = new BehaviorSubject(false);
+  private _subscribingToProduct$ = new BehaviorSubject(false);
+  private _unsubscribingFromProduct$ = new BehaviorSubject(false);
   private _messages$: Observable<Message | MarketUpdateMessage[]>;
-  private _marketDataUpdated$ = new BehaviorSubject<MarketSate>({
+  private _marketData$ = new BehaviorSubject<MarketSate>({
     bids: [],
     asks: [],
   });
@@ -113,23 +115,35 @@ export class SocketEventsService {
   private _asks = new Map<number, number>();
 
   get opened() {
-    return this._opened;
+    return this._open$.value;
   }
 
   get opening() {
-    return this._opening;
+    return this._opening$.value;
   }
 
   get subscribedProduct() {
     return this._subscribedProduct;
   }
 
-  get marketDataUpdated$() {
-    return this._marketDataUpdated$;
+  get marketData$() {
+    return this._marketData$;
   }
 
   get open$() {
-    return this._openObserver;
+    return this._open$;
+  }
+
+  get opening$() {
+    return this._opening$;
+  }
+
+  get subscribingToProduct$() {
+    return this._subscribingToProduct$;
+  }
+
+  get unsubscribingFromProduct$() {
+    return this._unsubscribingFromProduct$;
   }
 
   get errors$() {
@@ -145,20 +159,24 @@ export class SocketEventsService {
     });
 
     this._openObserver.subscribe(() => {
-      this._opening = false;
-      this._opened = true;
+      this._opening$.next(false);
+      this._open$.next(true);
 
+      // restore subscribed product on open
       if (this._subscribedProduct) {
         this.subscribeToProduct();
       }
     });
 
     this._closeObserver.subscribe(() => {
-      this._opened = false;
-      this._closing = false;
+      this._closing$.next(false);
+      this._open$.next(false);
     });
 
-    this._closingObserver.subscribe(() => (this._closing = true));
+    this._closingObserver.subscribe(() => {
+      this._open$.next(false);
+      this._closing$.next(true);
+    });
 
     const nonBufferedMessages$ = this._webSocket.pipe(filter(message => isNonMarketUpdateMessage(message)));
     const bufferedMessages$ = this._webSocket.pipe(filter(message => isMarketUpdateMessage(message))).pipe(
@@ -167,20 +185,25 @@ export class SocketEventsService {
     ) as Observable<MarketUpdateMessage[]>;
 
     this._messages$ = merge(nonBufferedMessages$, bufferedMessages$).pipe(
+      tap(message => console.log(message)),
       catchError(error => {
+        if (error.type === 'close') {
+          return EMPTY;
+        }
+
         this._errors$.next(error);
         return throwError(error);
       }),
-      retryWhen(errors => errors.pipe(delay(1000))),
+      retryWhen(errors => errors.pipe(delay(RECONNECTION_TIMEOUT))),
     );
   }
 
   open() {
-    if (this._opening || this._opened) {
+    if (this._open$.value) {
       return;
     }
 
-    this._opening = true;
+    this._opening$.next(true);
 
     this._messages$.subscribe(message => {
       if (Array.isArray(message)) {
@@ -200,29 +223,37 @@ export class SocketEventsService {
   }
 
   close() {
-    if (this._closing || !this._opened) {
-      throw new Error('Socket is already closed');
+    if (!this._open$.value) {
+      return;
     }
 
-    this._closing = true;
-    this._opened = false;
+    this._closing$.next(true);
     this._webSocket.complete();
   }
 
   subscribeToProduct(product?: string) {
-    if (this._subscribedProduct === product && (this._opening || this._opened)) {
-      throw Error('There is already an active subscription to the product ' + product);
+    if (this._subscribingToProduct$.value || this._closing$.value) {
+      return;
     }
 
-    if (this._subscribedProduct && product) {
-      this.unsubscribe();
-    }
-
-    if (!this._opening && !this.opened) {
+    if (!this._open$.value && !this._opening$.value) {
       this.open();
     }
 
-    this._subscribing = true;
+    if (this._subscribedProduct && product) {
+      this.unsubscribe().then(() => {
+        this._subscribingToProduct$.next(true);
+        this._webSocket.next({
+          event: 'subscribe',
+          feed: 'book_ui_1',
+          product_ids: [product || this._subscribedProduct],
+        } as RequestMessage);
+      });
+
+      return;
+    }
+
+    this._subscribingToProduct$.next(true);
     this._webSocket.next({
       event: 'subscribe',
       feed: 'book_ui_1',
@@ -231,17 +262,32 @@ export class SocketEventsService {
   }
 
   unsubscribe() {
-    if (!this._subscribedProduct) {
+    if (
+      !this._subscribedProduct ||
+      !this._open$.value ||
+      this._unsubscribingFromProduct$.value ||
+      this._subscribingToProduct$.value
+    ) {
       return;
     }
 
-    this._unsubscribing = true;
-
+    this._unsubscribingFromProduct$.next(true);
     this._webSocket.next({
       event: 'unsubscribe',
       feed: 'book_ui_1',
       product_ids: [this._subscribedProduct],
     } as RequestMessage);
+
+    return new Promise(res => {
+      this._unsubscribingFromProduct$
+        .pipe(
+          filter(value => !value),
+          take(1),
+        )
+        .subscribe(() => {
+          res(true);
+        });
+    });
   }
 
   simulateError() {
@@ -254,6 +300,10 @@ export class SocketEventsService {
     const asks = this._asks;
 
     messages.forEach((message: MarketUpdateMessage) => {
+      if (message.product_id !== this._subscribedProduct) {
+        return;
+      }
+
       message.bids?.forEach(bid => {
         if (bid[1] === 0) {
           bids.delete(bid[0]);
@@ -273,22 +323,24 @@ export class SocketEventsService {
 
     this._bids = sortAndTruncateMap(bids, true, this.marketDepth);
     this._asks = sortAndTruncateMap(asks, false, this.marketDepth);
-    this._marketDataUpdated$.next({ bids: Array.from(this._bids), asks: Array.from(this._asks) });
+    this._marketData$.next({ bids: Array.from(this._bids), asks: Array.from(this._asks) });
   }
 
   private processSnapshotMessage(message: MarketSnapshotMessage) {
     this._bids = sortAndTruncateMap(new Map<number, number>(message.bids), true, this.marketDepth);
     this._asks = sortAndTruncateMap(new Map<number, number>(message.asks), false, this.marketDepth);
-    this._marketDataUpdated$.next({ bids: Array.from(this._bids), asks: Array.from(this._asks) });
+    this._marketData$.next({ bids: Array.from(this._bids), asks: Array.from(this._asks) });
   }
 
   private processSubscriptionMessage(message: SubscriptionResultMessage) {
     if (message.event === 'subscribed') {
       this._subscribedProduct = message.product_ids[0];
-      this._subscribing = false;
+      this._subscribingToProduct$.next(false);
+      this._subscribedToProduct$.next(true);
     } else if (message.event === 'unsubscribed') {
       this._subscribedProduct = null;
-      this._unsubscribing = false;
+      this._subscribedToProduct$.next(false);
+      this._unsubscribingFromProduct$.next(false);
       this._bids.clear();
       this._asks.clear();
     }

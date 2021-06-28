@@ -9,6 +9,7 @@ const theme = {
   },
   Button: {
     buttonStyle: {
+      minWidth: 150,
       paddingHorizontal: 15,
     },
   },

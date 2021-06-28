@@ -11,7 +11,7 @@ export const useMarketData = (marketUpdateBufferTime = 100) => {
       return;
     }
 
-    const marketUpdatesSubscription = service.marketDataUpdated$.subscribe(value => setMarketData(value));
+    const marketUpdatesSubscription = service.marketData$.subscribe(value => setMarketData(value));
     return () => marketUpdatesSubscription.unsubscribe();
   }, [service]);
 

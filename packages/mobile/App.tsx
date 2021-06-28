@@ -5,6 +5,8 @@ import {SafeAreaProvider} from 'react-native-safe-area-context';
 import Orderbook from './components/Orderbook';
 import {ThemeProvider} from 'react-native-elements';
 import {SocketEventsServiceProvider} from '@orderbook/common/providers/SocketEventsServiceProvider';
+import ErrorHandler from './components/ErrorHandler';
+import Toast from 'react-native-toast-message';
 
 const App = () => {
   const backgroundStyle = {
@@ -21,6 +23,8 @@ const App = () => {
         <ThemeProvider theme={theme}>
           <SocketEventsServiceProvider>
             <Orderbook />
+            <ErrorHandler />
+            <Toast ref={ref => Toast.setRef(ref)} />
           </SocketEventsServiceProvider>
         </ThemeProvider>
       </SafeAreaView>

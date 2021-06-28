@@ -1,12 +1,8 @@
-import { useContext, useEffect } from 'react';
-import { SocketEventsServiceContext } from '@orderbook/common/providers/SocketEventsServiceProvider';
-import { toast } from 'react-toastify';
+import {useContext, useEffect} from 'react';
+import {SocketEventsServiceContext} from '@orderbook/common/providers/SocketEventsServiceProvider';
+import Toast from 'react-native-toast-message';
 
 function getErrorMessageByType(type: string) {
-  if (!window.navigator.onLine) {
-    return 'There is no active internet connection available';
-  }
-
   switch (type) {
     case 'close':
       return 'Connection is closed. Pleas check that you are still connected to the internet';
@@ -24,17 +20,17 @@ const ErrorHandler = () => {
   useEffect(() => {
     if (socketService) {
       socketService.errors$.subscribe((error: any) => {
-        toast(getErrorMessageByType(error.type), {
-          toastId: error.type,
+        Toast.show({
+          text1: 'Error',
+          text2: getErrorMessageByType(error.type),
           type: 'error',
-          position: 'top-center',
-          autoClose: false,
+          autoHide: false,
         });
       });
 
       socketService.open$.subscribe(open => {
         if (open) {
-          toast.dismiss();
+          Toast.hide();
         }
       });
     }
