@@ -21,7 +21,7 @@ const Orderbook = () => {
   const groupOptions: NumericValueOption[] = useMemo(() => {
     return PRODUCT_GROUPS[selectedProduct].map(value => ({
       value,
-      label: value.toFixed(selectedProduct === PRODUCT.bitcoin ? 1 : 2),
+      label: value.toFixed(selectedProduct === PRODUCT.BTC ? 1 : 2),
     }));
   }, [selectedProduct]);
 
@@ -32,10 +32,10 @@ const Orderbook = () => {
   const [group, setGroup] = useState(groupOptions[0]);
 
   const switchSelectedProduct = () => {
-    if (selectedProduct === PRODUCT.bitcoin) {
-      setSelectedProduct(PRODUCT.ethereum);
+    if (selectedProduct === PRODUCT.BTC) {
+      setSelectedProduct(PRODUCT.ETH);
     } else {
-      setSelectedProduct(PRODUCT.bitcoin);
+      setSelectedProduct(PRODUCT.BTC);
     }
   };
 

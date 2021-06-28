@@ -94,7 +94,7 @@ function sortAndTruncateMap(map: Map<number, number>, desc = false, size: number
 }
 
 export class SocketEventsService {
-  private _subscribedProduct: string;
+  private _subscribedProduct: string = null;
   private _webSocket: WebSocketSubject<Message>;
   private _openObserver = new Subject();
   private _closeObserver = new Subject();
@@ -118,8 +118,24 @@ export class SocketEventsService {
     return this._open$.value;
   }
 
+  get closed() {
+    return !this._open$.value;
+  }
+
   get opening() {
     return this._opening$.value;
+  }
+
+  get closing() {
+    return this._closing$.value;
+  }
+
+  get subscribing() {
+    return this._subscribingToProduct$.value;
+  }
+
+  get unsubscribing() {
+    return this._unsubscribingFromProduct$.value;
   }
 
   get subscribedProduct() {
@@ -130,24 +146,36 @@ export class SocketEventsService {
     return this._marketData$;
   }
 
+  get marketData() {
+    return this._marketData$.value;
+  }
+
   get open$() {
-    return this._open$;
+    return this._open$.pipe(filter(value => value));
+  }
+
+  get closed$() {
+    return this._open$.pipe(filter(value => !value));
   }
 
   get opening$() {
-    return this._opening$;
+    return this._opening$.asObservable();
   }
 
   get subscribingToProduct$() {
-    return this._subscribingToProduct$;
+    return this._subscribingToProduct$.asObservable();
+  }
+
+  get subscribedToProduct$() {
+    return this._subscribedToProduct$.asObservable();
   }
 
   get unsubscribingFromProduct$() {
-    return this._unsubscribingFromProduct$;
+    return this._unsubscribingFromProduct$.asObservable();
   }
 
   get errors$() {
-    return this._errors$;
+    return this._errors$.asObservable();
   }
 
   constructor(public readonly url: string, private marketDepth: number, public marketUpdateBufferTime: number) {

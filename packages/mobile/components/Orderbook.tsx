@@ -22,7 +22,7 @@ const Orderbook = () => {
     return PRODUCT_GROUPS[selectedProduct].map(value => (
       <Picker.Item
         key={value}
-        label={value.toFixed(selectedProduct === PRODUCT.bitcoin ? 1 : 2)}
+        label={value.toFixed(selectedProduct === PRODUCT.BTC ? 1 : 2)}
         value={value}
       />
     ));
@@ -35,10 +35,10 @@ const Orderbook = () => {
   const [group, setGroup] = useState(PRODUCT_GROUPS[selectedProduct][0]);
 
   const switchSelectedProduct = () => {
-    if (selectedProduct === PRODUCT.bitcoin) {
-      setSelectedProduct(PRODUCT.ethereum);
+    if (selectedProduct === PRODUCT.BTC) {
+      setSelectedProduct(PRODUCT.ETH);
     } else {
-      setSelectedProduct(PRODUCT.bitcoin);
+      setSelectedProduct(PRODUCT.BTC);
     }
   };
 

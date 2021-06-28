@@ -4,11 +4,11 @@ export const DEFAULT_FEED_BUFFER_TIME = 500;
 export const RECONNECTION_TIMEOUT = 1000;
 
 export const PRODUCT = {
-  bitcoin: 'PI_XBTUSD',
-  ethereum: 'PI_ETHUSD',
+  BTC: 'PI_XBTUSD',
+  ETH: 'PI_ETHUSD',
 };
 
-export const DEFAULT_PRODUCT = PRODUCT.bitcoin;
+export const DEFAULT_PRODUCT = PRODUCT.BTC;
 
 export const PRODUCT_NAMES = {
   PI_XBTUSD: 'BTC/USD',
