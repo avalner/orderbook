@@ -1,6 +1,6 @@
 # Getting Started with Orderbook application
 
-This project is organized as a monorepo with 3 packages: web, mobile and common. This architecture is chosen to allow easy sharing of common functionality (SocketMessageService, common constants, and shared theme) between web and mobile projects.
+This project is organized as a monorepo with 3 packages: web, mobile and common. This architecture is chosen to allow easy sharing of common functionality (SocketMessageService, common constants, react hooks, and shared theme) between web and mobile projects.
 
 ## Available Scripts
 
