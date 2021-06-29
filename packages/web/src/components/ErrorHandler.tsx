@@ -1,6 +1,7 @@
 import { useContext, useEffect } from 'react';
 import { SocketEventsServiceContext } from '@orderbook/common/providers/SocketEventsServiceProvider';
 import { toast } from 'react-toastify';
+import { WebsocketEvent } from '@orderbook/common/types';
 
 function getErrorMessageByType(type: string) {
   if (!window.navigator.onLine) {
@@ -23,7 +24,7 @@ const ErrorHandler = () => {
 
   useEffect(() => {
     if (socketService) {
-      socketService.errors$.subscribe((error: any) => {
+      socketService.errors$.subscribe((error: WebsocketEvent) => {
         toast(getErrorMessageByType(error.type), {
           toastId: error.type,
           type: 'error',

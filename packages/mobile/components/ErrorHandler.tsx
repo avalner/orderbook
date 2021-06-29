@@ -1,6 +1,7 @@
 import {useContext, useEffect} from 'react';
 import {SocketEventsServiceContext} from '@orderbook/common/providers/SocketEventsServiceProvider';
 import Toast from 'react-native-toast-message';
+import {WebsocketEvent} from '@orderbook/common/types';
 
 function getErrorMessageByType(type: string) {
   switch (type) {
@@ -19,7 +20,7 @@ const ErrorHandler = () => {
 
   useEffect(() => {
     if (socketService) {
-      socketService.errors$.subscribe((error: any) => {
+      socketService.errors$.subscribe((error: WebsocketEvent) => {
         Toast.show({
           text1: 'Error',
           text2: getErrorMessageByType(error.type),

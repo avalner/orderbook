@@ -68,7 +68,7 @@ function getCustomStyles<T, M extends boolean>(inputStyles: StylesConfig<T, M>, 
 
 const formatOptionLabel =
   (selectedValuePrefix: string) =>
-  (option: any, labelMeta: FormatOptionLabelMeta<NumericValueOption, false>): React.ReactNode => {
+  (option, labelMeta: FormatOptionLabelMeta<NumericValueOption, false>): React.ReactNode => {
     return labelMeta.context === 'value' && selectedValuePrefix
       ? `${selectedValuePrefix} ${option.label}`
       : option.label;
