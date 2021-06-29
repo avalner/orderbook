@@ -95,6 +95,13 @@
       "react-app/jest"
     ]
   },
+  "jest": {
+    "moduleNameMapper": {
+      "@orderbook/common/(.*)": "<rootDir>/../common/src/$1",
+      "^react$": "<rootDir>/node_modules/react",
+      "^react-dom$": "<rootDir>/node_modules/react-dom"
+    }
+  },
   "browserslist": {
     "production": [
       ">0.2%",

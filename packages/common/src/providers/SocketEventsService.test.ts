@@ -74,6 +74,7 @@ test('Product unsubscription test.', done => {
   service.open();
   service.open$.subscribe(async () => {
     service.subscribeToProduct(PRODUCT.BTC);
+    await expect(server).toReceiveMessage(getSubscribeMessage(PRODUCT.BTC));
     server.send(getSubscribedMessage(PRODUCT.BTC));
 
     service.subscribedToProduct$.pipe(filter(value => value)).subscribe(async () => {
@@ -106,7 +107,7 @@ test('Snapshot message test. Market update message data should be overridden by 
     } as MarketUpdateMessage);
     server.send(getMarketSnapshotMessage(PRODUCT.BTC));
 
-    service.marketData$.subscribe(marketData => {
+    service.marketData$.pipe(skip(2)).subscribe(marketData => {
       expect(marketData).toStrictEqual(marketDataAfterSnapshotXbt);
       done();
     });
@@ -137,7 +138,7 @@ test('Market update message test', done => {
       ],
     } as MarketUpdateMessage);
 
-    service.marketData$.pipe(skip(1)).subscribe(marketData => {
+    service.marketData$.pipe(skip(2)).subscribe(marketData => {
       service.open();
       expect(marketData).toStrictEqual({
         bids: [

@@ -1,16 +1,9 @@
-import React, {useMemo} from 'react';
+import React from 'react';
 import {StyleSheet, View} from 'react-native';
 import {Text} from 'react-native-elements';
 import theme from '../theme';
-
-export type MarketSide = 'bid' | 'ask';
-
-type MarketItemData = {
-  price: number;
-  size: number;
-  total: number;
-  totalPercent?: number;
-};
+import {useFullMarketData} from '@orderbook/common/hooks';
+import {MarketSide} from '@orderbook/common/types';
 
 const MarketSideTable: React.FC<{
   data: [number, number][];
@@ -18,37 +11,7 @@ const MarketSideTable: React.FC<{
   rowNum?: number;
   marketSide: MarketSide;
 }> = ({data, group, rowNum = 10, marketSide}) => {
-  const fullData: MarketItemData[] = useMemo(() => {
-    const result = data?.reduce<MarketItemData[]>((result, [price, size]) => {
-      if (result.length === rowNum) {
-        return result;
-      }
-
-      const prevItem = result[result.length - 1];
-      const prevPrice = prevItem?.price || 0;
-
-      // merge size with previous item if price difference is less then group
-      if (Math.abs(price - prevPrice) < group) {
-        prevItem.size += size;
-        prevItem.total += size;
-        return result;
-      }
-
-      const newItem = {
-        price,
-        size,
-        total: (prevItem?.total || 0) + size,
-      };
-      result.push(newItem);
-      return result;
-    }, []);
-
-    const grandTotal = result[result.length - 1]?.total;
-    result.forEach(
-      item => (item.totalPercent = (item.total / grandTotal) * 100),
-    );
-    return result;
-  }, [data, group]);
+  const fullData = useFullMarketData(data, rowNum, group);
 
   return (
     <View

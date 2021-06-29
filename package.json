@@ -8,6 +8,9 @@
     "start:android": "yarn workspace @orderbook/mobile android",
     "build:web": "yarn workspace @orderbook/web build",
     "build:electron": "yarn workspace @orderbook/web electron-pack",
+    "test:web": "yarn workspace @orderbook/web test",
+    "test:mobile": "yarn workspace @orderbook/mobile test",
+    "test:common": "yarn workspace @orderbook/common test",
     "storybook": "yarn workspace @orderbook/web storybook"
   },
   "workspaces": {
