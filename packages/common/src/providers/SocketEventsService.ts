@@ -192,7 +192,7 @@ export class SocketEventsService {
       this._opening$.next(false);
       this._open$.next(true);
 
-      // restore subscribed product on open
+      // restore product subscription on open
       if (this._subscribedProduct) {
         this.subscribeToProduct();
       }
@@ -234,6 +234,7 @@ export class SocketEventsService {
 
   open() {
     if (this._open$.value) {
+      console.log('open is blocked');
       return;
     }
 
@@ -256,6 +257,7 @@ export class SocketEventsService {
 
   close() {
     if (!this._open$.value) {
+      console.log('close is blocked');
       return;
     }
 
@@ -265,7 +267,7 @@ export class SocketEventsService {
 
   subscribeToProduct(product?: string) {
     if (this._subscribingToProduct$.value || this._unsubscribingFromProduct$.value || this._closing$.value) {
-      console.log('subscribing blocked');
+      console.log('subscribing is blocked');
       return;
     }
 
@@ -289,7 +291,6 @@ export class SocketEventsService {
       return;
     }
 
-    console.log('subscribing on');
     this._subscribingToProduct$.next(true);
     this._webSocket.next({
       event: 'subscribe',
@@ -305,6 +306,7 @@ export class SocketEventsService {
       this._unsubscribingFromProduct$.value ||
       this._subscribingToProduct$.value
     ) {
+      console.log('unsubscribing is blocked');
       return;
     }
 
@@ -372,7 +374,6 @@ export class SocketEventsService {
   private processSubscriptionMessage(message: SubscriptionResultMessage) {
     if (message.event === 'subscribed') {
       this._subscribedProduct = message.product_ids[0];
-      console.log('subscribing off');
       this._subscribingToProduct$.next(false);
       this._subscribedToProduct$.next(true);
     } else if (message.event === 'unsubscribed') {
