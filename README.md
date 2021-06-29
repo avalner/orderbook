@@ -16,11 +16,11 @@ Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
 The page will reload if you make edits.\
 You will also see any lint errors in the console.
 
-## `yarn start:electron`
+### `yarn start:electron`
 
 Runs application in the electron window. Server should be running on [http://localhost:3000](http://localhost:3000) before this task is executed.
 
-## `yarn start:electron-dev`
+### `yarn start:electron-dev`
 
 Runs the web app + electron window.
 
@@ -37,6 +37,6 @@ Launches the test runner.
 Builds the module for production.
 Common module doesn't require to be built.
 
-### `storybook`
+### `yarn storybook`
 
 Runs storybook for the web application.
