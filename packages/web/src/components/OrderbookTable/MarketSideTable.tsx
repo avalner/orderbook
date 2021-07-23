@@ -1,8 +1,8 @@
+import useFullMarketData from '@orderbook/common/hooks/useFullMarketData';
+import { MarketSide } from '@orderbook/common/types';
+import classNames from 'classnames/bind';
 import React from 'react';
 import styles from './MarketSideTable.module.css';
-import classNames from 'classnames/bind';
-import { useFullMarketData } from '@orderbook/common/hooks';
-import { MarketSide } from '@orderbook/common/types';
 
 const cx = classNames.bind(styles);
 

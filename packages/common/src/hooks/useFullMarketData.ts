@@ -7,7 +7,7 @@ type MarketItemData = {
   totalPercent?: number;
 };
 
-export const useFullMarketData = (marketSideData: [number, number][], rowNum: number, group: number) => {
+const useFullMarketData = (marketSideData: [number, number][], rowNum: number, group: number) => {
   return useMemo(() => {
     const result = marketSideData?.reduce<MarketItemData[]>((result, [price, size]) => {
       if (result.length === rowNum) {
@@ -38,3 +38,5 @@ export const useFullMarketData = (marketSideData: [number, number][], rowNum: nu
     return result;
   }, [marketSideData, group, rowNum]);
 };
+
+export default useFullMarketData;

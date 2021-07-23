@@ -8,7 +8,7 @@ import {
   getUnsubscribeMessage,
 } from './mocks/message-helpers';
 import { PRODUCT } from '../constants';
-import { filter, skip } from 'rxjs/operators';
+import { filter, skip, takeUntil, tap } from 'rxjs/operators';
 import { marketDataAfterSnapshotXbt } from './mocks/messages';
 
 const SERVER_URL = 'ws://localhost:1234';
@@ -16,7 +16,7 @@ const server: WS = new WS(SERVER_URL, { jsonProtocol: true });
 let service: SocketEventsService;
 
 beforeEach(() => {
-  service = new SocketEventsService('ws://localhost:1234', 100, 100);
+  service = new SocketEventsService('ws://localhost:1234');
 });
 
 afterEach(() => {
@@ -96,6 +96,17 @@ test('Product unsubscription test.', done => {
 test('Snapshot message test. Market update message data should be overridden by new snapshot data', done => {
   service.open();
   service.open$.subscribe(async () => {
+    service.marketData$
+      .pipe(
+        tap(data => console.log(data)),
+        takeUntil(service.closed$),
+      )
+      .subscribe(marketData => {
+        expect({ bids: Array.from(marketData.bids), asks: Array.from(marketData.asks) }).toStrictEqual(
+          marketDataAfterSnapshotXbt,
+        );
+      });
+
     service.subscribeToProduct(PRODUCT.BTC);
     server.send(getSubscribedMessage(PRODUCT.BTC));
     server.send(getMarketSnapshotMessage(PRODUCT.BTC));
@@ -106,11 +117,7 @@ test('Snapshot message test. Market update message data should be overridden by 
       asks: [[90, 90]],
     } as MarketUpdateMessage);
     server.send(getMarketSnapshotMessage(PRODUCT.BTC));
-
-    service.marketData$.pipe(skip(2)).subscribe(marketData => {
-      expect(marketData).toStrictEqual(marketDataAfterSnapshotXbt);
-      done();
-    });
+    service.close();
   });
 });
 

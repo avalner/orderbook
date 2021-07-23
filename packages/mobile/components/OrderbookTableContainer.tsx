@@ -1,7 +1,6 @@
-import React from 'react';
+import useMarketData from '@orderbook/common/hooks/useMarketData';
+import React, {useEffect} from 'react';
 import OrderbookTable from './OrderbookTable';
-import {useEffect} from 'react';
-import {useMarketData} from '@orderbook/common/providers/useMarketData';
 
 const OrderTableContainer: React.FC<{
   group: number;

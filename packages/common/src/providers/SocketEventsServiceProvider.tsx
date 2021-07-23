@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { SocketEventsService } from './SocketEventsService';
-import { DEFAULT_FEED_BUFFER_TIME, FEED_URL, MARKET_DEPTH } from '../constants';
+import { FEED_URL } from '../constants';
 
 export const SocketEventsServiceContext = React.createContext<SocketEventsService>(null);
 
@@ -8,7 +8,7 @@ export const SocketEventsServiceProvider = ({ children }) => {
   const [service, setService] = useState<SocketEventsService>();
 
   useEffect(() => {
-    const srv = new SocketEventsService(FEED_URL, MARKET_DEPTH, DEFAULT_FEED_BUFFER_TIME);
+    const srv = new SocketEventsService(FEED_URL);
     console.log('SocketEventsService created');
     srv.open();
     setService(srv);

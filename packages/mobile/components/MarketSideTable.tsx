@@ -1,9 +1,9 @@
+import useFullMarketData from '@orderbook/common/hooks/useFullMarketData';
+import {MarketSide} from '@orderbook/common/types';
 import React from 'react';
 import {StyleSheet, View} from 'react-native';
 import {Text} from 'react-native-elements';
 import theme from '../theme';
-import {useFullMarketData} from '@orderbook/common/hooks';
-import {MarketSide} from '@orderbook/common/types';
 
 const MarketSideTable: React.FC<{
   data: [number, number][];

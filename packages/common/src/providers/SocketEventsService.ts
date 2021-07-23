@@ -1,6 +1,6 @@
-import { bufferWhen, catchError, delay, distinctUntilChanged, filter, retryWhen, take } from 'rxjs/operators';
+import { catchError, delay, distinctUntilChanged, filter, retryWhen, take } from 'rxjs/operators';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
-import { BehaviorSubject, EMPTY, merge, Observable, Subject, throwError, timer } from 'rxjs';
+import { BehaviorSubject, EMPTY, Observable, Subject, throwError } from 'rxjs';
 import { RECONNECTION_TIMEOUT } from '../constants';
 
 export type RequestMessage = {
@@ -55,6 +55,11 @@ export type MarketSate = {
   asks: [number, number][];
 };
 
+export type MarketSateInternal = {
+  bids: Map<number, number>;
+  asks: Map<number, number>;
+};
+
 function isSubscriptionResultMessage(message: Message): message is SubscriptionResultMessage {
   return 'event' in message && (message.event === 'subscribed' || message.event === 'unsubscribed');
 }
@@ -81,14 +86,6 @@ function isMarketUpdateMessage(message: Message): message is MarketUpdateMessage
   );
 }
 
-function sortAndTruncateMap(map: Map<number, number>, desc = false, size: number) {
-  const sortedArray = Array.from(map.entries()).sort((item1, item2) =>
-    desc ? item2[0] - item1[0] : item1[0] - item2[0],
-  );
-
-  return new Map<number, number>(sortedArray.slice(0, size));
-}
-
 export class SocketEventsService {
   private _subscribedProduct: string = null;
   private _webSocket: WebSocketSubject<Message>;
@@ -101,10 +98,10 @@ export class SocketEventsService {
   private _subscribedToProduct$ = new BehaviorSubject(false);
   private _subscribingToProduct$ = new BehaviorSubject(false);
   private _unsubscribingFromProduct$ = new BehaviorSubject(false);
-  private _messages$: Observable<Message | MarketUpdateMessage[]>;
-  private _marketData$ = new BehaviorSubject<MarketSate>({
-    bids: [],
-    asks: [],
+  private _messages$: Observable<Message>;
+  private _marketData$ = new BehaviorSubject<MarketSateInternal>({
+    bids: new Map(),
+    asks: new Map(),
   });
   private _errors$ = new Subject();
   private _bids = new Map<number, number>();
@@ -180,7 +177,7 @@ export class SocketEventsService {
     return this._errors$.asObservable();
   }
 
-  constructor(public readonly url: string, private marketDepth: number, public marketUpdateBufferTime: number) {
+  constructor(public readonly url: string) {
     this._webSocket = webSocket({
       url: this.url,
       openObserver: this._openObserver,
@@ -209,17 +206,7 @@ export class SocketEventsService {
       this._closing$.next(true);
     });
 
-    const nonBufferedMessages$ = this._webSocket.pipe(
-      filter(message => !(isMarketUpdateMessage(message) || isMarketSnapshotMessage(message))),
-    );
-    const bufferedMessages$ = this._webSocket
-      .pipe(filter(message => isMarketUpdateMessage(message) || isMarketSnapshotMessage(message)))
-      .pipe(
-        bufferWhen(() => timer(this.marketUpdateBufferTime)),
-        filter(messages => !!messages.length),
-      ) as Observable<MarketUpdateMessage[]>;
-
-    this._messages$ = merge(nonBufferedMessages$, bufferedMessages$).pipe(
+    this._messages$ = this._webSocket.pipe(
       catchError(error => {
         if (error.type === 'close') {
           return EMPTY;
@@ -241,16 +228,16 @@ export class SocketEventsService {
     this._opening$.next(true);
 
     this._messages$.subscribe(message => {
-      if (Array.isArray(message)) {
-        this.processBufferedMessages(message);
-      } else {
-        if (isSubscriptionResultMessage(message)) {
-          this.processSubscriptionMessage(message);
-        } else if (isInfoMessage(message)) {
-          this.processInfoMessage(message);
-        } else if (isAlertMessage(message)) {
-          this.processAlertMessage(message);
-        }
+      if (isMarketSnapshotMessage(message)) {
+        this.processMarketSnapshotMessage(message);
+      } else if (isMarketUpdateMessage(message)) {
+        this.processMarketUpdateMessage(message);
+      } else if (isSubscriptionResultMessage(message)) {
+        this.processSubscriptionMessage(message);
+      } else if (isInfoMessage(message)) {
+        this.processInfoMessage(message);
+      } else if (isAlertMessage(message)) {
+        this.processAlertMessage(message);
       }
     });
   }
@@ -334,40 +321,33 @@ export class SocketEventsService {
     this._webSocket.complete();
   }
 
-  private processBufferedMessages(messages: MarketUpdateMessage[]) {
-    let bids = this._bids;
-    let asks = this._asks;
+  private processMarketUpdateMessage(message: MarketUpdateMessage) {
+    if (message.product_id !== this._subscribedProduct) {
+      return;
+    }
 
-    messages.forEach((message: MarketUpdateMessage | MarketSnapshotMessage) => {
-      if (isMarketSnapshotMessage(message)) {
-        bids = sortAndTruncateMap(new Map<number, number>(message.bids), true, this.marketDepth);
-        asks = sortAndTruncateMap(new Map<number, number>(message.asks), false, this.marketDepth);
-        return;
+    message.bids?.forEach(bid => {
+      if (bid[1] === 0) {
+        this._bids.delete(bid[0]);
+      } else {
+        this._bids.set(bid[0], bid[1]);
       }
-
-      if (message.product_id !== this._subscribedProduct) {
-        return;
-      }
-
-      message.bids?.forEach(bid => {
-        if (bid[1] === 0) {
-          bids.delete(bid[0]);
-        } else {
-          bids.set(bid[0], bid[1]);
-        }
-      });
-
-      message.asks?.forEach(ask => {
-        if (ask[1] === 0) {
-          asks.delete(ask[0]);
-        } else {
-          asks.set(ask[0], ask[1]);
-        }
-      });
     });
 
-    this._bids = sortAndTruncateMap(bids, true, this.marketDepth);
-    this._asks = sortAndTruncateMap(asks, false, this.marketDepth);
+    message.asks?.forEach(ask => {
+      if (ask[1] === 0) {
+        this._asks.delete(ask[0]);
+      } else {
+        this._asks.set(ask[0], ask[1]);
+      }
+    });
+
+    this.emitCurrentMarketData();
+  }
+
+  private processMarketSnapshotMessage(message: MarketSnapshotMessage) {
+    this._bids = new Map<number, number>(message.bids);
+    this._asks = new Map<number, number>(message.asks);
     this.emitCurrentMarketData();
   }
 
@@ -394,7 +374,7 @@ export class SocketEventsService {
   }
 
   private emitCurrentMarketData() {
-    this._marketData$.next({ bids: Array.from(this._bids), asks: Array.from(this._asks) });
+    this._marketData$.next({ bids: this._bids, asks: this._asks });
   }
 
   private clearMarketData() {
